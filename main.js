@@ -1,56 +1,108 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
+import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xffffff); // Set background to white
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+let scene, camera, renderer;
+let mapControls, dragControls;
+let objects = [];
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setAnimationLoop(animate);
-document.body.appendChild(renderer.domElement);
+init();
+animate();
 
-const loader = new GLTFLoader();
+function init() {
+    // Scene
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
 
-loader.load('smeb_driveunit/smeb_driveunit.gltf', function (gltf) {
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    gltf.scene.traverse(function (child) {
-        if (child.isMesh) {
-            child.material = material;
+    // Camera
+    camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+    );
+    camera.position.set(0, 0, 5);
+
+    // Renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Controls
+    mapControls = new MapControls(camera, renderer.domElement);
+    mapControls.enableDamping = true;
+    mapControls.dampingFactor = 0.05;
+    mapControls.screenSpacePanning = false;
+    mapControls.minDistance = 1;
+    mapControls.maxDistance = 100;
+    mapControls.maxPolarAngle = Math.PI / 2;
+
+    // Load GLTF
+    loadModel();
+
+    // Handle resize
+    window.addEventListener('resize', onWindowResize);
+}
+
+function loadModel() {
+    const loader = new GLTFLoader();
+    loader.load(
+        'smeb_driveunit/smeb_driveunit.gltf',
+        function (gltf) {
+            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            gltf.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.material = material;
+                    objects.push(child);
+                }
+            });
+
+            // Normalize and center model
+            normalizeModel(gltf.scene);
+            scene.add(gltf.scene);
+
+            // Drag controls
+            dragControls = new DragControls(objects, camera, renderer.domElement);
+            dragControls.transformGroup = true;
+            dragControls.addEventListener('dragstart', function (event) {
+                mapControls.enabled = false;
+            });
+            dragControls.addEventListener('dragend', function (event) {
+                if (event.object.material.emissive) {
+                    event.object.material.emissive.set(0x000000);
+                }
+                mapControls.enabled = true;
+            });
+        },
+        undefined,
+        function (error) {
+            console.error(error);
         }
-        var mroot = gltf.scene;
-        var bbox = new THREE.Box3().setFromObject(mroot);
-        var cent = bbox.getCenter(new THREE.Vector3());
-        var size = bbox.getSize(new THREE.Vector3());
+    );
+}
 
-        //Rescale the object to normalized space
-        var maxAxis = Math.max(size.x, size.y, size.z);
-        mroot.scale.multiplyScalar(1.0 / maxAxis);
-        bbox.setFromObject(mroot);
-        bbox.getCenter(cent);
-        bbox.getSize(size);
-        //Reposition to 0,halfY,0
-        mroot.position.copy(cent).multiplyScalar(-1);
-        mroot.position.y -= (size.y * 0.5);
+function normalizeModel(model) {
+    const bbox = new THREE.Box3().setFromObject(model);
+    const cent = bbox.getCenter(new THREE.Vector3());
+    const size = bbox.getSize(new THREE.Vector3());
+    const maxAxis = Math.max(size.x, size.y, size.z);
+    model.scale.multiplyScalar(1.0 / maxAxis);
+    bbox.setFromObject(model);
+    bbox.getCenter(cent);
+    bbox.getSize(size);
+    model.position.copy(cent).multiplyScalar(-1);
+    model.position.y -= (size.y * 0.5);
+}
 
-    });
-    scene.add(gltf.scene);
-}, undefined, function (error) {
-    console.error(error);
-});
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
 
-// const geometry = new THREE.BoxGeometry(1, 1, 1);
-// const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-// const cube = new THREE.Mesh(geometry, material);
-// scene.add(cube);
-
-camera.position.z = 5;
-
-function animate(time) {
-
-    // cube.rotation.x = time / 2000;
-    // cube.rotation.y = time / 1000;
-
+function animate() {
+    requestAnimationFrame(animate);
+    if (mapControls) mapControls.update();
     renderer.render(scene, camera);
-
 }
