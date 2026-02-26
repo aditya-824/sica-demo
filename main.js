@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
-import { update } from 'three/examples/jsm/libs/tween.module.js';
 
 let scene, camera, renderer;
 let mapControls, dragControls;
@@ -16,6 +15,18 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
 
+    // Lighting: Directional light at top right (white)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 10, 5); // Top right
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    scene.add(directionalLight);
+
+    // Ambient light (white)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
+
     // Camera
     camera = new THREE.PerspectiveCamera(
         75,
@@ -26,8 +37,10 @@ function init() {
     camera.position.set(0, 0, 5);
 
     // Renderer
-    renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
     // Controls
@@ -60,10 +73,12 @@ function loadModel1() {
     loader.load(
         'smeb_driveunit.gltf',
         function (gltf) {
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const material = new THREE.MeshStandardMaterial({ color: 0x175b74 });
             gltf.scene.traverse(function (child) {
                 if (child.isMesh) {
                     child.material = material;
+                    child.castShadow = true;
+                    child.receiveShadow = true;
                     objects.push(child);
                 }
             });
@@ -84,10 +99,12 @@ function loadModel2() {
     loader.load(
         'smej_315_idlerunit.gltf',
         function (gltf) {
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const material = new THREE.MeshStandardMaterial({ color: 0x175b74 });
             gltf.scene.traverse(function (child) {
                 if (child.isMesh) {
                     child.material = material;
+                    child.castShadow = true;
+                    child.receiveShadow = true;
                     objects.push(child);
                 }
             });
