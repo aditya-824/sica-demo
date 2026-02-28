@@ -56,19 +56,26 @@ function init() {
     // Handle resize
     window.addEventListener('resize', onWindowResize);
 
-    // Add event listener for Drive Unit button
-    const driveUnitBtn = document.getElementById('profiles');
-    if (driveUnitBtn) {
-        driveUnitBtn.addEventListener('click', loadModel1);
-    }
+    // Render main menu in #categories
+    renderMainMenu();
+}
 
-    const idlerUnitBtn = document.getElementById('accessories');
-    if (idlerUnitBtn) {
-        idlerUnitBtn.addEventListener('click', loadModel2);
+function renderMainMenu() {
+    const categoriesDiv = document.getElementById('categories');
+    if (categoriesDiv) {
+        categoriesDiv.innerHTML = `
+          <img src="/icons/flexible-conveyor-icon.jpg" alt="Flexible Conveyor" class="category-icon" id="flexible-conveyor-icon">
+          <p>Flexible Conveyor</p>
+        `;
+        // Attach event listener for flexible conveyor icon
+        const flexibleConveyorBtn = document.getElementById('flexible-conveyor-icon');
+        if (flexibleConveyorBtn) {
+            flexibleConveyorBtn.addEventListener('click', flexibleConveyorMenu);
+        }
     }
 }
 
-function loadModel1() {
+function load85mmConveyorBeam() {
     const loader = new GLTFLoader();
     loader.load(
         'smeb_driveunit.gltf',
@@ -164,4 +171,55 @@ function initMapControls() {
     mapControls.minDistance = 1;
     mapControls.maxDistance = 100;
     mapControls.maxPolarAngle = Math.PI / 2;
+}
+
+function flexibleConveyorMenu() {
+    // Replace #categories content with the provided HTML
+    const categoriesDiv = document.getElementById('categories');
+    if (categoriesDiv) {
+        categoriesDiv.innerHTML = `
+          <div class="categories">
+            <div class="category-container" id="profiles">
+              <img src="/icons/profiles-icon.png" alt="Conveyor Beam" class="category-icon" id="85mm-conveyor-beam-icon">
+              <p>Profiles</p>
+            </div>
+            <div class="category-container" id="accessories">
+              <img src="/icons/accessories-icon.jpg" alt="Accessories" class="category-icon" id="accessories-icon">
+              <p>Accessories</p>
+            </div>
+          </div>
+          <button class="back-button" id="back-to-main-menu">Back</button>
+        `;
+        // Re-attach event listeners for new buttons
+        const driveUnitBtn = document.getElementById('85mm-conveyor-beam-icon');
+        if (driveUnitBtn) {
+            driveUnitBtn.addEventListener('click', load85mmConveyorBeam);
+        }
+        const idlerUnitBtn = document.getElementById('accessories-icon');
+        if (idlerUnitBtn) {
+            idlerUnitBtn.addEventListener('click', loadModel2);
+        }
+        // Add back button functionality
+        const backBtn = document.getElementById('back-to-main-menu');
+        if (backBtn) {
+            backBtn.addEventListener('click', mainMenu);
+        }
+    }
+}
+
+function mainMenu() {
+    const categoriesDiv = document.getElementById('categories');
+    if (categoriesDiv) {
+        categoriesDiv.innerHTML = `
+        <div class="category-container" id="flexible-conveyor">
+            <img src="/icons/flexible-conveyor-icon.jpg" alt="Flexible Conveyor" class="category-icon" id="flexible-conveyor-icon">
+            <p>Flexible Conveyor</p>
+        </div>
+        `;
+        // Re-attach event listener for flexible conveyor icon
+        const flexibleConveyorBtn = document.getElementById('flexible-conveyor-icon');
+        if (flexibleConveyorBtn) {
+            flexibleConveyorBtn.addEventListener('click', flexibleConveyorMenu);
+        }
+    }
 }

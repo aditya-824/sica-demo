@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>My first three.js app</title>
+    <title>Sica India</title>
     <style>
       body {
         margin: 0;
@@ -15,15 +15,8 @@
     <main>
       <div id="control-panel">
         <img src="/sica-logo.png" alt="Sica Logo" id="sica-logo">
-        <div class="categories">
-          <div class="category-container" id="profiles">
-            <img src="/icons/profiles-icon.png" alt="Profiles" class="category-icon" id="profiles-icon">
-            <p>Profiles</p>
-          </div>
-          <div class="category-container" id="accessories">
-            <img src="/icons/accessories-icon.jpg" alt="Accessories" class="category-icon" id="accessories-icon">
-            <p>Accessories</p>
-          </div>
+        <div id="categories"></div>
+
         </div>
     </main>
 
@@ -85,6 +78,15 @@
         }
         .category-container:hover {
             background-color: rgba(231, 231, 231, 0.752);
+            cursor: pointer;
+        }
+        .back-button {
+            margin: 6px;
+            padding: 4px;
+            font-size: 14px;
+            background-color: rgba(231, 231, 231, 0.752);
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
         }
       </style>
