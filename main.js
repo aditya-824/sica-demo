@@ -1,11 +1,18 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
-import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 
 let scene, camera, renderer;
-let mapControls, dragControls;
-let objects = []; // Draggable objects
+let mapControls;
+let modelGroups = []; // Array of model groups (gltf.scene objects)
+
+// Custom drag state
+let isDragging = false;
+let draggedGroup = null;
+const dragPlane = new THREE.Plane();
+const dragOffset = new THREE.Vector3();
+const dragRaycaster = new THREE.Raycaster();
+const dragMouse = new THREE.Vector2();
 
 init();
 animate();
@@ -65,16 +72,66 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// Custom drag controls that move entire model groups (gltf.scene), not individual meshes
 function initDragControls() {
-    dragControls = new DragControls(objects, camera, renderer.domElement);
-    dragControls.transformGroup = true;
-    dragControls.addEventListener('dragstart', function (event) {
+    renderer.domElement.addEventListener('pointerdown', onDragPointerDown);
+    renderer.domElement.addEventListener('pointermove', onDragPointerMove);
+    renderer.domElement.addEventListener('pointerup', onDragPointerUp);
+}
+
+function onDragPointerDown(event) {
+    dragMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    dragMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    dragRaycaster.setFromCamera(dragMouse, camera);
+
+    // Collect all meshes from all model groups for raycasting
+    const allMeshes = [];
+    modelGroups.forEach(g => g.traverse(c => { if (c.isMesh) allMeshes.push(c); }));
+    const intersects = dragRaycaster.intersectObjects(allMeshes, false);
+
+    if (intersects.length > 0) {
+        // Walk up to find the model group (direct child of scene)
+        let obj = intersects[0].object;
+        while (obj.parent && obj.parent !== scene) {
+            obj = obj.parent;
+        }
+        draggedGroup = obj;
+
+        // Create drag plane perpendicular to camera at intersection point
+        const cameraDir = new THREE.Vector3();
+        camera.getWorldDirection(cameraDir);
+        dragPlane.setFromNormalAndCoplanarPoint(cameraDir, intersects[0].point);
+
+        // Compute offset so group doesn't jump to cursor position
+        const planeIntersection = new THREE.Vector3();
+        dragRaycaster.ray.intersectPlane(dragPlane, planeIntersection);
+        dragOffset.copy(planeIntersection).sub(draggedGroup.position);
+
+        isDragging = true;
         mapControls.enabled = false;
-    });
-    dragControls.addEventListener('dragend', function (event) {
-        mapControls.enabled = true;
-        checkPossibleSnap(event.object);
-    });
+    }
+}
+
+function onDragPointerMove(event) {
+    if (!isDragging || !draggedGroup) return;
+
+    dragMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    dragMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    dragRaycaster.setFromCamera(dragMouse, camera);
+
+    const planeIntersection = new THREE.Vector3();
+    if (dragRaycaster.ray.intersectPlane(dragPlane, planeIntersection)) {
+        draggedGroup.position.copy(planeIntersection.sub(dragOffset));
+    }
+}
+
+function onDragPointerUp() {
+    if (isDragging && draggedGroup) {
+        checkPossibleSnap(draggedGroup);
+    }
+    isDragging = false;
+    draggedGroup = null;
+    mapControls.enabled = true;
 }
 
 function initMapControls() {
@@ -180,7 +237,6 @@ function loadSmebDriveUnit() {
                     child.material = material;
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    objects.push(child);
                 }
             });
 
@@ -189,11 +245,18 @@ function loadSmebDriveUnit() {
                 new THREE.Vector3(320.3, -5, 8.66), // Vertex 2
                 new THREE.Vector3(320.3, -5, -8.66)  // Vertex 3
             ];
-            gltf.scene.userData.snapPoints = moduleSnapPoints;
 
             // Normalize and center model
             normalizeModel(gltf.scene);
+            // Transform snap points from geometry (mm) space to gltf.scene local space
+            transformSnapPointsToModelLocal(gltf.scene, moduleSnapPoints);
+
+            gltf.scene.userData.snapPoints = moduleSnapPoints;
+            gltf.scene.userData.name = "SmebDriveUnit";
+
             scene.add(gltf.scene);
+            modelGroups.push(gltf.scene);
+            highlightSnapPointsAndTriangle(gltf.scene, moduleSnapPoints);
         },
         undefined,
         function (error) {
@@ -213,7 +276,6 @@ function loadSmej315IdlerUnit() {
                     child.material = material;
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    objects.push(child);
                 }
             });
 
@@ -222,11 +284,18 @@ function loadSmej315IdlerUnit() {
                 new THREE.Vector3(320.3, -5, 8.66), // Vertex 2
                 new THREE.Vector3(320.3, -5, -8.66)  // Vertex 3
             ];
-            gltf.scene.userData.snapPoints = moduleSnapPoints;
 
             // Normalize and center model
             normalizeModel(gltf.scene);
+            // Transform snap points from geometry (mm) space to gltf.scene local space
+            transformSnapPointsToModelLocal(gltf.scene, moduleSnapPoints);
+
+            gltf.scene.userData.snapPoints = moduleSnapPoints;
+            gltf.scene.userData.name = "Smej315IdlerUnit";
+
             scene.add(gltf.scene);
+            modelGroups.push(gltf.scene);
+            highlightSnapPointsAndTriangle(gltf.scene, moduleSnapPoints);
         },
         undefined,
         function (error) {
@@ -246,7 +315,6 @@ function loadD3B1() {
                     child.material = material;
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    objects.push(child);
                 }
             });
 
@@ -255,11 +323,18 @@ function loadD3B1() {
                 new THREE.Vector3(3199.35, 180.03, 1048.65), // Vertex 2
                 new THREE.Vector3(3182.03, 180.03, 1048.65)  // Vertex 3
             ];
-            gltf.scene.userData.snapPoints = moduleSnapPoints;
 
             // Normalize and center model
             normalizeModel(gltf.scene);
+            // Transform snap points from geometry (mm) space to gltf.scene local space
+            transformSnapPointsToModelLocal(gltf.scene, moduleSnapPoints);
+
+            gltf.scene.userData.snapPoints = moduleSnapPoints;
+            gltf.scene.userData.name = "D3B1";
+
             scene.add(gltf.scene);
+            modelGroups.push(gltf.scene);
+            highlightSnapPointsAndTriangle(gltf.scene, moduleSnapPoints);
         },
         undefined,
         function (error) {
@@ -281,6 +356,60 @@ function normalizeModel(model) {
     model.position.y -= (size.y * 0.5);
     // Rotate 90 degrees upwards (around X axis)
     model.rotation.x = Math.PI / 2;
+}
+
+// Convert snap points from mesh-geometry space (mm) to gltf.scene's local space
+// by computing the relative transform through the GLTF node hierarchy.
+// The GLTF node tree typically has intermediate transforms (e.g. 0.001 scale for mm→m).
+function transformSnapPointsToModelLocal(model, snapPoints) {
+    model.updateMatrixWorld(true);
+
+    // Find the relative transform: model.matrixWorld⁻¹ × mesh.matrixWorld
+    // This maps from mesh-local (geometry) space into model-local space
+    let relMatrix = null;
+    model.traverse(function (child) {
+        if (child.isMesh && !relMatrix) {
+            relMatrix = new THREE.Matrix4()
+                .copy(model.matrixWorld)
+                .invert()
+                .multiply(child.matrixWorld);
+        }
+    });
+
+    if (relMatrix) {
+        snapPoints.forEach(function (pt) {
+            pt.applyMatrix4(relMatrix);
+        });
+    }
+}
+
+function highlightSnapPointsAndTriangle(model, snapPoints) {
+    // Remove previous highlights if any
+    if (model.userData.snapHighlightGroup) {
+        model.remove(model.userData.snapHighlightGroup);
+    }
+    const group = new THREE.Group();
+
+    // Place highlights in model-local space as children of the model.
+    // They will automatically transform with the model when it moves.
+    const sphereGeometry = new THREE.SphereGeometry(0.02, 16, 16);
+    const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    snapPoints.forEach(function (pt) {
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.copy(pt);
+        group.add(sphere);
+    });
+
+    // Draw triangle edges in model-local space
+    const triangleMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
+    const triangleGeometry = new THREE.BufferGeometry().setFromPoints([
+        snapPoints[0], snapPoints[1], snapPoints[2], snapPoints[0]
+    ]);
+    const triangleLine = new THREE.Line(triangleGeometry, triangleMaterial);
+    group.add(triangleLine);
+
+    model.userData.snapHighlightGroup = group;
+    model.add(group); // Child of model — moves with it automatically
 }
 
 // Snap functions
@@ -345,22 +474,35 @@ function getTriangleCenter(points) {
     return points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
 }
 
-function checkPossibleSnap(draggedObject) {
-    const snapThreshold = 0.1; // in world units
-    if (!draggedObject.userData.snapPoints) return;
-    const modulePoints = draggedObject.userData.snapPoints;
-    // Check against all other objects
-    for (const obj of objects) {
-        if (obj === draggedObject) continue;
-        if (!obj.userData.snapPoints) continue;
-        const corePoints = obj.userData.snapPoints;
-        // Compare center points
-        const moduleCenterWorld = draggedObject.localToWorld(getTriangleCenter(modulePoints).clone());
-        const coreCenterWorld = obj.localToWorld(getTriangleCenter(corePoints).clone());
+function checkPossibleSnap(draggedGroup) {
+    if (!draggedGroup || !draggedGroup.userData.snapPoints) return;
+    console.log(draggedGroup.userData.name);
+    console.log('Checking for snap...');
+
+    // Ensure matrices are current after drag
+    draggedGroup.updateMatrixWorld(true);
+
+    const snapThreshold = 0.9; // in world units
+    const modulePoints = draggedGroup.userData.snapPoints;
+
+    // Check against all other model groups
+    for (const group of modelGroups) {
+        if (group === draggedGroup || !group.userData.snapPoints) continue;
+        console.log('Checking against object:', group.userData.name || group.name || group.id);
+        group.updateMatrixWorld(true);
+        const corePoints = group.userData.snapPoints;
+
+        // Compare center points in world space
+        const moduleCenterWorld = draggedGroup.localToWorld(getTriangleCenter(modulePoints).clone());
+        const coreCenterWorld = group.localToWorld(getTriangleCenter(corePoints).clone());
         const dist = moduleCenterWorld.distanceTo(coreCenterWorld);
+
         if (dist < snapThreshold) {
-            // Snap!
-            snapModuleToCore(corePoints, modulePoints, draggedObject);
+            console.log('Snap possible! Distance:', dist);
+            console.log('Snapping:', draggedGroup.userData.name, '<-->', group.userData.name);
+            // Convert core points to world space (snapModuleToCore expects core in world, module in local)
+            const coreWorldPoints = corePoints.map(p => group.localToWorld(p.clone()));
+            snapModuleToCore(coreWorldPoints, modulePoints, draggedGroup);
             break;
         }
     }
