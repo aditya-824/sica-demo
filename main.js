@@ -1,3 +1,63 @@
+// Snap module to core using snap hooks algorithm
+// corePoints: [THREE.Vector3, THREE.Vector3, THREE.Vector3] (clockwise)
+// modulePoints: [THREE.Vector3, THREE.Vector3, THREE.Vector3] (clockwise)
+// moduleObject: THREE.Object3D to transform
+function snapModuleToCore(corePoints, modulePoints, moduleObject) {
+    // 1. Calculate planes and normals
+    const coreNormal = getTriangleNormal(corePoints);
+    const moduleNormal = getTriangleNormal(modulePoints);
+
+    // 2. Align planes: rotate module so its normal opposes core's normal
+    // Find rotation axis and angle
+    const axis = moduleNormal.clone().cross(coreNormal).normalize();
+    let angle = Math.acos(
+        Math.max(-1, Math.min(1, moduleNormal.clone().dot(coreNormal)))
+    );
+    // We want normals to face each other, so rotate by PI if already aligned
+    if (angle < 1e-4) {
+        angle = Math.PI;
+        axis.copy(moduleNormal.clone().cross(new THREE.Vector3(1, 0, 0)).normalize());
+    }
+    if (axis.lengthSq() > 1e-6) {
+        moduleObject.rotateOnWorldAxis(axis, angle);
+    }
+
+    // 3. Move module so snap hook centers coincide
+    const coreCenter = getTriangleCenter(corePoints);
+    const moduleCenter = getTriangleCenter(modulePoints);
+    // Calculate world position of module snap hook center
+    const moduleWorldCenter = moduleObject.localToWorld(moduleCenter.clone());
+    const translation = coreCenter.clone().sub(moduleWorldCenter);
+    moduleObject.position.add(translation);
+
+    // 4. Align vertex 1 direction
+    // Get direction from center to vertex 1 for both
+    const coreDir = corePoints[0].clone().sub(coreCenter).normalize();
+    // After transform, get module vertex 1 world position
+    const moduleVertexWorld = moduleObject.localToWorld(modulePoints[0].clone());
+    const moduleDir = moduleVertexWorld.clone().sub(coreCenter).normalize();
+    // Find rotation to align these directions around the normal axis
+    const alignAxis = coreNormal.clone().normalize();
+    let alignAngle = Math.acos(
+        Math.max(-1, Math.min(1, moduleDir.dot(coreDir)))
+    );
+    // Determine direction of rotation
+    const cross = moduleDir.clone().cross(coreDir);
+    if (cross.dot(alignAxis) < 0) alignAngle = -alignAngle;
+    moduleObject.rotateOnWorldAxis(alignAxis, alignAngle);
+}
+
+// Helper: get normal of triangle (clockwise order)
+function getTriangleNormal(points) {
+    const v1 = points[1].clone().sub(points[0]);
+    const v2 = points[2].clone().sub(points[0]);
+    return v1.cross(v2).normalize();
+}
+
+// Helper: get center of triangle
+function getTriangleCenter(points) {
+    return points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
+}
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
@@ -54,6 +114,8 @@ function init() {
 
     // Render main menu in #categories
     renderMainMenu();
+
+    // const corePoints = gltf.scene.userData.snapPoints;
 }
 
 function renderMainMenu() {
@@ -89,6 +151,12 @@ function loadSmebDriveUnit() {
             // Normalize and center model
             normalizeModel(gltf.scene);
             scene.add(gltf.scene);
+            const moduleSnapPoints = [
+                new THREE.Vector3(320.3, 10, 0), // Vertex 1
+                new THREE.Vector3(320.3, -5, 8.66), // Vertex 2
+                new THREE.Vector3(320.3, -5, -8.66)  // Vertex 3
+            ];
+            gltf.scene.userData.snapPoints = moduleSnapPoints;
         },
         undefined,
         function (error) {
