@@ -1,3 +1,8 @@
+import * as THREE from 'three';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
+import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
+
 // Snap module to core using snap hooks algorithm
 // corePoints: [THREE.Vector3, THREE.Vector3, THREE.Vector3] (clockwise)
 // modulePoints: [THREE.Vector3, THREE.Vector3, THREE.Vector3] (clockwise)
@@ -58,10 +63,6 @@ function getTriangleNormal(points) {
 function getTriangleCenter(points) {
     return points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
 }
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
-import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 
 let scene, camera, renderer;
 let mapControls, dragControls;
@@ -134,29 +135,24 @@ function renderMainMenu() {
 }
 
 function loadSmebDriveUnit() {
-    const loader = new GLTFLoader();
+    const loader = new STLLoader();
     loader.load(
-        'smeb_driveunit.gltf',
-        function (gltf) {
+        'parts/smeb-driveunit.STL',
+        function (geometry) {
             const material = new THREE.MeshStandardMaterial({ color: 0x175b74 });
-            gltf.scene.traverse(function (child) {
-                if (child.isMesh) {
-                    child.material = material;
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                    objects.push(child);
-                }
-            });
-
-            // Normalize and center model
-            normalizeModel(gltf.scene);
-            scene.add(gltf.scene);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            objects.push(mesh);
+            normalizeModel(mesh);
+            scene.add(mesh);
+            // Example snap points (update with real values)
             const moduleSnapPoints = [
-                new THREE.Vector3(320.3, 10, 0), // Vertex 1
-                new THREE.Vector3(320.3, -5, 8.66), // Vertex 2
-                new THREE.Vector3(320.3, -5, -8.66)  // Vertex 3
+                new THREE.Vector3(320.3, 10, 0),
+                new THREE.Vector3(320.3, -5, 8.66),
+                new THREE.Vector3(320.3, -5, -8.66)
             ];
-            gltf.scene.userData.snapPoints = moduleSnapPoints;
+            mesh.userData.snapPoints = moduleSnapPoints;
         },
         undefined,
         function (error) {
@@ -166,23 +162,18 @@ function loadSmebDriveUnit() {
 }
 
 function loadSmej315IdlerUnit() {
-    const loader = new GLTFLoader();
+    const loader = new STLLoader();
     loader.load(
-        'smej_315_idlerunit.gltf',
-        function (gltf) {
+        'parts/smej_315_idlerunit.STL',
+        function (geometry) {
             const material = new THREE.MeshStandardMaterial({ color: 0x175b74 });
-            gltf.scene.traverse(function (child) {
-                if (child.isMesh) {
-                    child.material = material;
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                    objects.push(child);
-                }
-            });
-
-            // Normalize and center model
-            normalizeModel(gltf.scene);
-            scene.add(gltf.scene);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            objects.push(mesh);
+            normalizeModel(mesh);
+            scene.add(mesh);
+            // Example: mesh.userData.snapPoints = [...] if needed
         },
         undefined,
         function (error) {
