@@ -46,10 +46,6 @@ function init() {
     // Controls
     initMapControls();
 
-    // Load GLTFs
-    // loadModel1();
-    // loadModel2();
-
     // Drag Controls
     initDragControls();
 
@@ -75,7 +71,7 @@ function renderMainMenu() {
     }
 }
 
-function load85mmConveyorBeam() {
+function loadSmebDriveUnit() {
     const loader = new GLTFLoader();
     loader.load(
         'smeb_driveunit.gltf',
@@ -101,7 +97,7 @@ function load85mmConveyorBeam() {
     );
 }
 
-function loadModel2() {
+function loadSmej315IdlerUnit() {
     const loader = new GLTFLoader();
     loader.load(
         'smej_315_idlerunit.gltf',
@@ -138,6 +134,8 @@ function normalizeModel(model) {
     bbox.getSize(size);
     model.position.copy(cent).multiplyScalar(-1);
     model.position.y -= (size.y * 0.5);
+    // Rotate 90 degrees upwards (around X axis)
+    model.rotation.x = Math.PI / 2;
 }
 
 function onWindowResize() {
@@ -179,25 +177,25 @@ function flexibleConveyorMenu() {
     if (categoriesDiv) {
         categoriesDiv.innerHTML = `
           <div class="categories">
-            <div class="category-container" id="profiles">
-              <img src="/icons/profiles-icon.png" alt="Conveyor Beam" class="category-icon" id="85mm-conveyor-beam-icon">
-              <p>Profiles</p>
+            <div class="category-container" id="smeb-drive-unit">
+              <img src="/icons/conveyor-guides-icon.jpg" alt="SMEB Drive Unit" class="category-icon">
+              <p>SMEB Drive Unit</p>
             </div>
-            <div class="category-container" id="accessories">
-              <img src="/icons/accessories-icon.jpg" alt="Accessories" class="category-icon" id="accessories-icon">
-              <p>Accessories</p>
+            <div class="category-container" id="smej-315-idler-unit">
+              <img src="/icons/wl-series-icon.jpg" alt="SMEJ 315 Idler Unit" class="category-icon">
+              <p>SMEJ 315 Idler Unit</p>
             </div>
           </div>
           <button class="back-button" id="back-to-main-menu">Back</button>
         `;
         // Re-attach event listeners for new buttons
-        const driveUnitBtn = document.getElementById('85mm-conveyor-beam-icon');
+        const driveUnitBtn = document.getElementById('smeb-drive-unit');
         if (driveUnitBtn) {
-            driveUnitBtn.addEventListener('click', load85mmConveyorBeam);
+            driveUnitBtn.addEventListener('click', loadSmebDriveUnit);
         }
-        const idlerUnitBtn = document.getElementById('accessories-icon');
+        const idlerUnitBtn = document.getElementById('smej-315-idler-unit');
         if (idlerUnitBtn) {
-            idlerUnitBtn.addEventListener('click', loadModel2);
+            idlerUnitBtn.addEventListener('click', loadSmej315IdlerUnit);
         }
         // Add back button functionality
         const backBtn = document.getElementById('back-to-main-menu');
